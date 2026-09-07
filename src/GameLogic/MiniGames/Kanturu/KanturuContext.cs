@@ -4,11 +4,15 @@
 
 namespace MUnique.OpenMU.GameLogic.MiniGames.Kanturu;
 
+using System.Collections.Concurrent;
 using System.Threading;
 using MUnique.OpenMU.DataModel.Configuration;
+using MUnique.OpenMU.DataModel.Configuration.Items;
+using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.PlugIns.PeriodicTasks;
+using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.GameLogic.Views.World;
 using MUnique.OpenMU.Interfaces;
 using MUnique.OpenMU.Pathfinding;
@@ -103,6 +107,7 @@ public sealed class KanturuContext : MiniGameContext
         await this.ShowGoldenMessageIfConfiguredAsync(this._definition.IntroMessageKey).ConfigureAwait(false);
 
         _ = Task.Run(() => this.RunKanturuGameLoopAsync(this.GameEndedToken), this.GameEndedToken);
+        _ = Task.Run(() => this.RunRequiredItemWearAsync(this.GameEndedToken), this.GameEndedToken);
     }
 
     /// <inheritdoc/>
@@ -174,6 +179,25 @@ public sealed class KanturuContext : MiniGameContext
         }
 
         await base.GameEndedAsync(finishers).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gets the equipped items of the player which provide one of the attributes the event map
+    /// requires, so the ones without which it couldn't have entered.
+    /// </summary>
+    /// <param name="player">The player whose equipped items are searched.</param>
+    /// <param name="requirements">The requirements of the event map.</param>
+    private static IList<Item> GetRequiredItems(Player player, ICollection<AttributeRequirement> requirements)
+    {
+        if (player.Inventory is not { } inventory)
+        {
+            return [];
+        }
+
+        return inventory.EquippedItems
+            .Where(item => item.Definition?.BasePowerUpAttributes
+                .Any(powerUp => requirements.Any(requirement => requirement.Attribute == powerUp.TargetAttribute)) is true)
+            .ToList();
     }
 
     private static KanturuEventDefinition GetEventDefinition(IGameContext gameContext)
@@ -690,6 +714,96 @@ public sealed class KanturuContext : MiniGameContext
                 player.InvokeViewPlugInAsync<IShowSkillAnimationPlugIn>(p =>
                     p.ShowSkillAnimationAsync(monster, null, nightmare.SpecialAttackSkillNumber, true)).AsTask())
                 .ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Wears down the items which are required by the event map, for example the Moonstone
+    /// Pendant, and moves the players out of the event when their item is destroyed.
+    /// </summary>
+    private async Task RunRequiredItemWearAsync(CancellationToken ct)
+    {
+        if (this._definition.RequiredItemDurabilityLossInterval <= TimeSpan.Zero
+            || this._definition.RequiredItemDurabilityLoss <= 0)
+        {
+            return;
+        }
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(this._definition.RequiredItemDurabilityLossInterval, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+
+            try
+            {
+                await this.WearRequiredItemsAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                this.Logger.LogError(ex, "Unexpected error when wearing down the required items.");
+            }
+        }
+    }
+
+    private async Task WearRequiredItemsAsync()
+    {
+        if (this.Map.Definition.MapRequirements is not { Count: > 0 } requirements)
+        {
+            return;
+        }
+
+        // The players whose item got destroyed can't be moved out inside ForEachPlayerAsync:
+        // it holds a reader lock which the removal from the map would wait for as a writer.
+        var destroyedItems = new ConcurrentBag<(Player Player, Item Item)>();
+
+        await this.ForEachPlayerAsync(async player =>
+        {
+            foreach (var item in GetRequiredItems(player, requirements))
+            {
+                if (item.DecreaseDurability(this._definition.RequiredItemDurabilityLoss))
+                {
+                    await player.InvokeViewPlugInAsync<IItemDurabilityChangedPlugIn>(p =>
+                        p.ItemDurabilityChangedAsync(item, false)).ConfigureAwait(false);
+                }
+
+                if (item.Durability <= 0)
+                {
+                    destroyedItems.Add((player, item));
+                }
+            }
+        }).ConfigureAwait(false);
+
+        foreach (var (player, item) in destroyedItems)
+        {
+            try
+            {
+                this.Logger.LogInformation(
+                    "Kanturu: the {Item} of {Player} has been destroyed, so it leaves the event.",
+                    item.Definition?.Name,
+                    player);
+
+                await player.DestroyInventoryItemAsync(item).ConfigureAwait(false);
+                if (this._definition.RequiredItemDestroyedMessageKey is { Length: > 0 } messageKey)
+                {
+                    await player.ShowLocalizedBlueMessageAsync(messageKey, item.Definition?.Name).ConfigureAwait(false);
+                }
+
+                if (player.IsActive() && player.CurrentMap is not null)
+                {
+                    // Moving the player off the map also removes it from this mini game.
+                    await player.WarpToSafezoneAsync().ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                this.Logger.LogError(ex, "Unexpected error when moving {Player} out of the event.", player);
+            }
         }
     }
 

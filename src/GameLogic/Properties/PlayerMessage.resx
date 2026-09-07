@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -452,6 +452,9 @@
   </data>
   <data name="KanturuVictory" xml:space="preserve">
     <value>Nightmare has been defeated! The Kanturu Refinery Tower is yours!</value>
+  </data>
+  <data name="KanturuRequiredItemDestroyed" xml:space="preserve">
+    <value>Your {0} has been destroyed! You are falling out of the Kanturu Refinery Tower.</value>
   </data>
   <data name="KanturuBarrierOpening" xml:space="preserve">
     <value>The barrier opens — the tower awaits!</value>

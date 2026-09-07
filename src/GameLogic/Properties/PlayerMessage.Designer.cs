@@ -178,6 +178,15 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Your {0} has been destroyed! You are falling out of the Kanturu Refinery Tower..
+        /// </summary>
+        public static string KanturuRequiredItemDestroyed {
+            get {
+                return ResourceManager.GetString("KanturuRequiredItemDestroyed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The barrier opens — the tower awaits!.
         /// </summary>
         public static string KanturuBarrierOpening {

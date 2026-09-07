@@ -78,6 +78,25 @@ public class KanturuEventDefinition
     public IList<KanturuPhaseDefinition> Phases { get; set; } = new List<KanturuPhaseDefinition>();
 
     /// <summary>
+    /// Gets or sets the interval in which the items which are required by the event map lose
+    /// durability, for example the Moonstone Pendant. Set it to <see cref="TimeSpan.Zero"/> to
+    /// let them stay intact.
+    /// </summary>
+    public TimeSpan RequiredItemDurabilityLossInterval { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Gets or sets how much durability the required items lose per
+    /// <see cref="RequiredItemDurabilityLossInterval"/>.
+    /// </summary>
+    public double RequiredItemDurabilityLoss { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the key of the localized message which is shown to a player whose required
+    /// item has been destroyed, before it's moved out of the event.
+    /// </summary>
+    public string? RequiredItemDestroyedMessageKey { get; set; }
+
+    /// <summary>
     /// Gets or sets the key of the localized message which is shown when the barrier to the
     /// Elphis area is opened.
     /// </summary>
@@ -156,6 +175,9 @@ public class KanturuEventDefinition
             IntroDetailState = (byte)KanturuMayaDetailState.Notify,
             IntroDuration = TimeSpan.FromSeconds(3),
             MayaAttackInterval = TimeSpan.FromSeconds(15),
+            RequiredItemDurabilityLossInterval = TimeSpan.FromMinutes(1),
+            RequiredItemDurabilityLoss = 1,
+            RequiredItemDestroyedMessageKey = nameof(PlayerMessage.KanturuRequiredItemDestroyed),
             BarrierOpeningMessageKey = nameof(PlayerMessage.KanturuBarrierOpening),
             VictoryMessageKey = nameof(PlayerMessage.KanturuVictory),
             DefeatMessageKey = nameof(PlayerMessage.KanturuDefeat),
