@@ -42,8 +42,9 @@ public sealed class KanturuEventViewPlugIn : IKanturuEventViewPlugIn
     /// <inheritdoc />
     public async ValueTask ShowStateInfoAsync(KanturuState state, byte detailState, bool canEnter, int userCount, TimeSpan remainTime)
     {
+        // The state type of the packets has the same values as the state of the game logic.
         await this._player.Connection.SendKanturuStateInfoAsync(
-            Convert(state),
+            (KanturuStateInfo.StateType)(byte)state,
             detailState,
             canEnter,
             (byte)Math.Min(255, userCount),
@@ -63,7 +64,7 @@ public sealed class KanturuEventViewPlugIn : IKanturuEventViewPlugIn
     public async ValueTask ShowStateChangeAsync(KanturuState state, byte detailState)
     {
         await this._player.Connection.SendKanturuStateChangeAsync(
-            ConvertChange(state),
+            (KanturuStateChange.StateType)(byte)state,
             detailState)
             .ConfigureAwait(false);
     }
@@ -104,8 +105,4 @@ public sealed class KanturuEventViewPlugIn : IKanturuEventViewPlugIn
             isStorm ? KanturuMayaWideAreaAttack.AttackType.Storm : KanturuMayaWideAreaAttack.AttackType.Rain)
             .ConfigureAwait(false);
     }
-
-    private static KanturuStateInfo.StateType Convert(KanturuState state) => (KanturuStateInfo.StateType)(byte)state;
-
-    private static KanturuStateChange.StateType ConvertChange(KanturuState state) => (KanturuStateChange.StateType)(byte)state;
 }
