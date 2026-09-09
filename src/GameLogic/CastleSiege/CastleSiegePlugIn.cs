@@ -492,6 +492,14 @@ public class CastleSiegePlugIn : IPeriodicTaskPlugIn, IObjectAddedToMapPlugIn, I
             await CastleSiegeCrownMechanics.CheckMiddleWinnerAsync(context, utcNow).ConfigureAwait(false);
         }
 
+        if (!context.IsEventRunning && context.NextNpcSaveUtc <= utcNow)
+        {
+            await context.SaveNpcStatesAsync().ConfigureAwait(false);
+            context.NextNpcSaveUtc = utcNow + NpcSaveInterval;
+        }
+
+        // Runs last: a fan-out to many players is more failure-prone than the rest of this tick, and it must
+        // not be able to skip the periodic NPC state save above if one send throws.
         if (context.CurrentState == CastleSiegeState.Start
             && context.NextMiniMapUpdateUtc <= utcNow)
         {
@@ -500,12 +508,6 @@ public class CastleSiegePlugIn : IPeriodicTaskPlugIn, IObjectAddedToMapPlugIn, I
                 context.StateStartTimeUtc,
                 utcNow,
                 MiniMapUpdateInterval);
-        }
-
-        if (!context.IsEventRunning && context.NextNpcSaveUtc <= utcNow)
-        {
-            await context.SaveNpcStatesAsync().ConfigureAwait(false);
-            context.NextNpcSaveUtc = utcNow + NpcSaveInterval;
         }
     }
 

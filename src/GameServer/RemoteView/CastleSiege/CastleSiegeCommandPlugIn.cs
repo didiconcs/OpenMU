@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using MUnique.OpenMU.GameLogic.Views.CastleSiege;
 using MUnique.OpenMU.Network.Packets.ServerToClient;
 using MUnique.OpenMU.PlugIns;
-using JoinSide = MUnique.OpenMU.DataModel.Configuration.CastleSiegeJoinSide;
 
 /// <summary>
 /// The default implementation of the <see cref="ICastleSiegeCommandPlugIn"/>
@@ -28,7 +27,7 @@ public class CastleSiegeCommandPlugIn : ICastleSiegeCommandPlugIn
     public CastleSiegeCommandPlugIn(RemotePlayer player) => this._player = player;
 
     /// <inheritdoc />
-    public ValueTask ShowGuildCommandAsync(JoinSide side, byte positionX, byte positionY, CastleSiegeCommandType command)
+    public ValueTask ShowGuildCommandAsync(byte team, byte positionX, byte positionY, CastleSiegeCommandType command)
     {
         var wireCommand = command switch
         {
@@ -37,6 +36,6 @@ public class CastleSiegeCommandPlugIn : ICastleSiegeCommandPlugIn
             _ => CastleSiegeGuildCommandType.Wait,
         };
 
-        return this._player.Connection?.SendCastleSiegeGuildCommandAsync((byte)side, positionX, positionY, wireCommand) ?? default;
+        return this._player.Connection?.SendCastleSiegeGuildCommandAsync(team, positionX, positionY, wireCommand) ?? default;
     }
 }

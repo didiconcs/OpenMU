@@ -36,21 +36,37 @@ internal sealed class CastleSiegeCommandHandlerPlugIn : ISubPacketHandlerPlugIn
 
         var request = new CastleGuildCommand(packet);
 
-        // request.Team is intentionally ignored: the server re-derives the issuer's actual side to prevent
-        // a spoofed Team value from mis-targeting the command (see CastleSiegeGuildCommandAction).
+        // Team is the client's command-group (squad) slot index, not an audience/authorization field - the
+        // audience is already determined by which players receive the resulting packet. The client stores it
+        // into a fixed GuildCommander[7] buffer with no bounds check on its side, so an out-of-range value here
+        // would be an out-of-bounds write on every recipient's client. Reject rather than clamp or relay blindly.
+        if (request.Team > 6)
+        {
+            return;
+        }
+
+        // Reject unmapped command bytes instead of defaulting to Wait: the client's rendering path leaves
+        // width/height uninitialized for any value above Wait (2), so a malformed byte should never reach it.
         var command = request.Command switch
         {
             CastleSiegeGuildCommandType.Attack => CastleSiegeCommandType.Attack,
             CastleSiegeGuildCommandType.Defend => CastleSiegeCommandType.Defend,
-            _ => CastleSiegeCommandType.Wait,
+            CastleSiegeGuildCommandType.Wait => CastleSiegeCommandType.Wait,
+            _ => (CastleSiegeCommandType?)null,
         };
+
+        if (command is not { } validCommand)
+        {
+            return;
+        }
 
         await CastleSiegeGuildCommandAction.IssueCommandAsync(
                 player,
                 CastleSiegeHandlerContext.Get(player),
+                request.Team,
                 request.PositionX,
                 request.PositionY,
-                command)
+                validCommand)
             .ConfigureAwait(false);
     }
 }

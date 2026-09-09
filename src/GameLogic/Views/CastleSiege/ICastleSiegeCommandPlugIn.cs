@@ -4,8 +4,6 @@
 
 namespace MUnique.OpenMU.GameLogic.Views.CastleSiege;
 
-using MUnique.OpenMU.DataModel.Configuration;
-
 /// <summary>
 /// A view which shows a guild command issued by an alliance master to same-side players.
 /// </summary>
@@ -14,10 +12,10 @@ public interface ICastleSiegeCommandPlugIn : IViewPlugIn
     /// <summary>
     /// Shows a directional guild command.
     /// </summary>
-    /// <param name="side">The side the command was issued to.</param>
+    /// <param name="team">The issuer's command-group (squad) slot, 0-6, relayed unchanged from the request.</param>
     /// <param name="positionX">The target X coordinate.</param>
     /// <param name="positionY">The target Y coordinate.</param>
     /// <param name="command">The command type.</param>
     /// <returns>A task that represents the asynchronous view update.</returns>
-    ValueTask ShowGuildCommandAsync(CastleSiegeJoinSide side, byte positionX, byte positionY, CastleSiegeCommandType command);
+    ValueTask ShowGuildCommandAsync(byte team, byte positionX, byte positionY, CastleSiegeCommandType command);
 }
